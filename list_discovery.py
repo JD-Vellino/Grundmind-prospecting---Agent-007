@@ -305,7 +305,8 @@ def check_company(
 ) -> dict:
     """
     One web search about one named company. Returns the
-    model's JSON answer ({} if it never searched).
+    model's JSON answer, or None if it never searched (an
+    answer from memory is not a check).
     """
 
     messages = [
@@ -462,7 +463,17 @@ Return exactly:
             or ""
         )
 
-    return {}
+    return None
+
+
+def signal_found(answer: dict) -> bool:
+
+    value = answer.get("ai_signal_found")
+
+    return (
+        value is True
+        or str(value).strip().lower() == "true"
+    )
 
 
 def to_candidate(
@@ -470,7 +481,7 @@ def to_candidate(
     answer: dict,
 ) -> dict | None:
 
-    if answer.get("ai_signal_found") is not True:
+    if not signal_found(answer):
         return None
 
     website = str(answer.get("website", "")).strip()
@@ -551,11 +562,29 @@ def discover_from_list(
     done = 0
 
     def check(row: dict) -> tuple[dict, dict | None]:
-        return row, check_company(
-            company=row["company"].strip(),
-            country=str(row.get("country", "")).strip(),
-            target_description=target_description,
-        )
+
+        def once() -> dict | None:
+            return check_company(
+                company=row["company"].strip(),
+                country=str(
+                    row.get("country", "")
+                ).strip(),
+                target_description=target_description,
+            )
+
+        answer = once()
+
+        # One search sometimes misses evidence that a
+        # second search finds (seen on Adval Tech). A miss
+        # hides the company for RECHECK_AFTER_DAYS, so
+        # confirm "no signal" once before accepting it.
+        if answer is not None and not signal_found(answer):
+            second = once()
+
+            if second is not None:
+                answer = second
+
+        return row, answer
 
     def safe_check(row: dict):
         # One failed company must not end the run.
