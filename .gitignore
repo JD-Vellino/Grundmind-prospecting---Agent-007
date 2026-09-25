@@ -27,3 +27,6 @@ research_runs/
 .idea/
 .vscode/
 .mcp.json
+
+# Per-company research configs (reveal which prospects were researched)
+company_configs/

@@ -59,6 +59,13 @@ type ProspectPoolData = {
   prospects: Prospect[];
 };
 
+// The sender's real signature lives in frontend/.env.local
+// (not committed): VITE_OUTREACH_SIGNATURE="Name\nTitle\nsite"
+const SIGNATURE =
+  import.meta.env.VITE_OUTREACH_SIGNATURE ??
+  "Your Name\nYour title, Your company";
+
+
 export default function ProspectPool() {
   const [data, setData] =
     useState<ProspectPoolData | null>(null);
@@ -94,9 +101,7 @@ Let’s talk.
 
 Best,
 
-Your Name
-Your title, Your company
-your-site.com`,
+${SIGNATURE}`,
     );
 
   const [useAiSignal, setUseAiSignal] =
