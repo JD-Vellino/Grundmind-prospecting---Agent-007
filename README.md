@@ -1,103 +1,174 @@
-# Agent 007 — AI prospecting agent for B2B sales
+# Agent 007 — AI Prospecting Agent
 
-Agent 007 finds and researches companies that are likely buyers for
-[GrundMind](https://grundmind.com), an AI-adoption diagnostics service.
-It looks for organisations that are **adopting AI in their own operations**
-and shows signs of commercial pain (unclear ROI, adoption friction, scaling,
-governance), then helps a human write and send a short, evidence-based
-first email.
+**Evidence-based B2B prospecting from company discovery to human-reviewed outreach.**
 
-It is a working internal tool, built product-first: the owner defines the
-sales process, acceptance criteria and QA; the code is written with AI coding
-assistants and reviewed against real runs.
+[**grundmind.com**](https://grundmind.com)
 
-## What it does
+> **Public product showcase.** Agent 007 is a working prospecting system built to identify organizations showing meaningful AI adoption and commercial signals relevant to GrundMind. The workflow combines web research, evidence verification, qualification, account intelligence, contact discovery, and human-reviewed outreach.
 
-| Stage | What happens |
-|---|---|
-| **Discovery** | Finds candidate companies — either by searching AI news, or by checking a real company list one company at a time (see below). |
-| **Qualification** | An LLM classifies each candidate (operating company vs. AI vendor, consultancy, investor…), rates AI investment and pain signals, and sets a priority. Vendors and consultancies are rejected. |
-| **Deep search** | For one company: several focused research workers (AI hiring, deployment, ROI/value, commercial pain, organisational fit) collect sourced evidence and produce a scored account brief. |
-| **Contacts** | Looks up likely contacts and emails via Hunter.io. |
-| **Outreach** | Drafts a personalised first email per prospect; a human reviews and edits before anything is sent (SMTP). |
+## What is Agent 007?
 
-## Design choices worth noting
+Agent 007 turns prospecting from an ad-hoc research task into a structured agentic workflow.
 
-- **Evidence over eloquence.** Every claim keeps its source URL. Sources are
-  tagged by type (company site, press, job posting, academic, vendor content).
-  A claim confirmed in an independent source counts as corroborated; academic
-  or vendor-only claims score lower and must be attributed in the brief.
-- **Buyer-side signals.** "AI investment" is defined as *the company spending
-  on AI for its own operations* — not AI startups raising money. This one
-  definition removed most vendors and investors from discovery results.
-- **Human in the loop.** The agent drafts; a person decides what is sent.
-- **Hard limits against model failure modes.** Per-search result caps (long
-  outputs got truncated into broken JSON), one failed search never kills a run,
-  a model answer without a web search is not accepted as a check.
+Instead of starting with a company name and manually searching for signs of AI activity, hiring, deployment, value, organizational change, and likely contacts, the system coordinates those steps and produces an evidence-backed account view.
 
-## A lesson from real runs: flip the funnel
+The workflow is designed around a simple principle:
 
-The first discovery mode asked the model to search AI news for matching
-companies. After several fixes it hit a ceiling: runs returned 100–150
-companies, but almost all were already known, and the new ones were mostly AI
-vendors. News search keeps surfacing the same well-known names.
+**Find evidence first. Score second. Contact third.**
 
-The **company-list mode** reverses it: start from an official list of listed
-companies (SIX Swiss Exchange, Deutsche Börse, Nasdaq Nordic), drop those
-already in the pool, and run one focused search per company: *"is this company
-using AI in its own operations?"*
+## The workflow
 
-| Run (same day) | Companies returned | New | Qualified |
-|---|---|---|---|
-| News search, Europe, 100 | 106 | 6 | 3 |
-| News search, Europe, 100 | 156 | 2 | 2 |
-| Company list, Switzerland, 25 checked | 25 | 12 with an AI signal | **11** |
+<p align="center">
+  <img src="assets/agent-007-workflow.svg" alt="Agent 007 public prospecting workflow" width="100%">
+</p>
 
-The list run also finished in under two minutes and surfaced small and
-mid-caps that news search never reached.
+### 1. Discover
 
-## Layout
+Agent 007 starts with candidate organizations rather than assuming every company is worth researching.
 
-```
-backend/     Python API, discovery, research and scoring (FastAPI)
-  company_lists/   public company lists for list-based discovery
-frontend/    React UI (built into frontend/dist, served by the API)
-```
+Discovery can begin from public company lists or from current AI-related signals. The system is designed to distinguish **organizations adopting AI for their own operations** from AI vendors, consultancies, investors, and other poor-fit categories.
 
-## Stack
+### 2. Research
 
-- **Backend:** Python, FastAPI, background jobs as subprocesses, JSON files as
-  storage (local, single user).
-- **LLM:** Kimi (Moonshot API) with its built-in `$web_search` tool.
-- **Frontend:** React + TypeScript + Vite.
-- **Integrations:** Hunter.io (contacts), SMTP (sending).
+For a qualified company, focused research passes examine several commercial signals:
 
-## Run it locally
+- **AI hiring**
+- **AI deployment**
+- **AI value / ROI**
+- **organizational fit**
+- **commercial pain or adoption friction**
 
-```bash
-python -m venv .venv
-.venv/bin/pip install -r requirements.txt
-cp backend/.env.example backend/.env   # fill in your keys
+The goal is not to generate a generic company summary. It is to collect evidence relevant to a specific buying hypothesis.
 
-cd frontend && npm install && npm run build && cd ..
-cd backend && ../.venv/bin/uvicorn api:app --host 127.0.0.1 --port 8707
-```
+### 3. Verify evidence
 
-Then open http://127.0.0.1:8707.
+Material claims keep their source and provenance.
 
-The API has no authentication and can send real email: keep it bound to
-`127.0.0.1`.
+Evidence can come from company pages, job postings, press coverage, public announcements, academic material, vendor case studies, and other public sources. Source type and corroboration matter: not every claim deserves the same confidence.
+
+A claim without adequate supporting evidence should remain unverified rather than being upgraded by fluent model output.
+
+### 4. Qualify
+
+The collected evidence is translated into a structured account assessment.
+
+Qualification helps separate:
+
+- companies with credible operational AI activity;
+- companies showing measurable value or ROI;
+- organizations with adoption or scaling friction;
+- poor-fit companies;
+- AI vendors and consultancies that should not enter the buyer pipeline.
+
+The scoring layer is designed to make the research process repeatable rather than dependent on an unstructured impression.
+
+### 5. Build the account brief
+
+Qualified evidence is consolidated into an account brief that answers the commercial questions that matter:
+
+**Why this company? Why now? What evidence supports the opportunity? What remains uncertain?**
+
+This becomes the working context for outreach rather than asking the model to improvise a sales message from a company name.
+
+### 6. Find contacts
+
+Agent 007 can identify likely contacts and use contact-enrichment services to support outreach preparation.
+
+Contact data is treated as operational data and is not committed to the public repository.
+
+### 7. Draft outreach
+
+The agent prepares a short, evidence-based first message using the account research.
+
+**A human reviews, edits, and decides whether anything is sent.**
+
+The purpose of automation is to reduce repetitive research and drafting — not to delegate the decision to contact someone.
+
+## A useful lesson from real runs: flip the funnel
+
+An early discovery approach started from broad AI news and asked the system to find matching organizations.
+
+That worked, but repeated runs tended to surface the same prominent companies and a large number of AI vendors.
+
+The workflow was improved by reversing the funnel:
+
+**Start with a defined company universe → remove known companies → research each company for buyer-side AI signals.**
+
+This produced a much more useful prospect pool, including smaller organizations that broad news discovery repeatedly missed.
+
+The lesson is broader than prospecting: **agent quality depends as much on the search space and workflow design as on the model itself.**
+
+## Evidence over eloquence
+
+Agent 007 deliberately separates persuasive writing from factual support.
+
+A strong account brief should be able to distinguish:
+
+- **verified evidence**
+- **unverified signals**
+- **corroborated claims**
+- **source-specific claims**
+- **inference**
+- **unknowns**
+
+The system should not turn absence of evidence into evidence of absence, and it should not manufacture certainty simply because a complete answer would read better.
+
+## Architecture principles
+
+| Principle | Agent 007 approach |
+| --- | --- |
+| **Buyer-side signals first** | AI adoption means operational use by the prospect, not simply being part of the AI industry. |
+| **Evidence before scoring** | Qualification follows sourced research rather than leading it. |
+| **Provenance matters** | Claims retain their supporting sources and evidence type. |
+| **Unknown stays unknown** | Unsupported conclusions remain unresolved. |
+| **Structured qualification** | Multiple signal families contribute to a repeatable account assessment. |
+| **Human-reviewed outreach** | The agent drafts; a person decides what is sent. |
+| **Fail locally** | One failed search or weak source should not invalidate an entire research run. |
+
+## Product architecture
+
+At a high level, Agent 007 consists of four layers:
+
+**Prospect Discovery → Evidence Research → Qualification & Account Intelligence → Outreach Preparation**
+
+The current implementation uses:
+
+- **Python / FastAPI** for orchestration and backend services;
+- an LLM with web-search capability for research tasks;
+- **React + TypeScript** for the operator interface;
+- contact-enrichment and email integrations for the final outreach workflow.
+
+The implementation can evolve; the product contract is more important than any single model or provider.
+
+## What this project demonstrates
+
+Agent 007 combines:
+
+**Agentic orchestration** — several focused research tasks contribute to one commercial outcome.
+
+**Evidence handling** — claims remain connected to their public sources.
+
+**Deterministic structure around probabilistic models** — models perform research and interpretation inside an explicit qualification workflow.
+
+**Workflow optimization** — real runs are used to identify bottlenecks and redesign the funnel.
+
+**Human agency** — automation prepares evidence and drafts; commercial decisions remain human.
 
 ## Data and privacy
 
-Runtime data (the prospect pool, contacts, research runs, logs) is
-git-ignored and never committed: it contains personal contact details.
-The company lists in `backend/company_lists/` are public stock-exchange data.
+Runtime prospect data, personal contact information, credentials, research logs, and outreach state are operational data and are not part of this public showcase.
 
-Cold email is regulated differently across Europe (e.g. stricter consent rules
-in Germany); check local rules before sending.
+Public company information may be used as research input, but private contact datasets and credentials remain outside the repository.
 
 ## Status
 
-Personal project, in active use. No test suite yet; changes are validated
-against saved real runs.
+Agent 007 is an actively developed working tool used to support GrundMind prospect research and outreach.
+
+This repository demonstrates the **agentic architecture, evidence discipline, qualification model, and workflow design** behind the system.
+
+---
+
+**Agent 007**  
+*AI Prospecting · Evidence Research · Account Qualification · Human-Reviewed Outreach*
+
+**JD Vellino** · AI Automation Consultant · Agentic AI · Deterministic Workflows
