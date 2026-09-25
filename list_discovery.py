@@ -87,6 +87,27 @@ COMPANY_LISTS = {
         "file": "denmark_copenhagen.csv",
         "source": NASDAQ_NORDIC_SOURCE,
     },
+    "croatia_zagreb": {
+        "label": "Croatia · Zagreb stock exchange",
+        "file": "croatia_zagreb.csv",
+        "source": (
+            "Zagreb Stock Exchange list of issuers "
+            "(zse.hr), downloaded 2026-09-25. State, city, "
+            "investment funds, a company in liquidation and "
+            "an IT-services firm removed; names shortened "
+            "by hand."
+        ),
+    },
+    "serbia_belgrade": {
+        "label": "Serbia · Belgrade stock exchange",
+        "file": "serbia_belgrade.csv",
+        "source": (
+            "Belgrade Stock Exchange share lists, Prime and "
+            "Open Market (bgdx.rs), downloaded 2026-09-25. "
+            "Issuers flagged BI or in bankruptcy removed. "
+            "Mostly small companies."
+        ),
+    },
     "germany_frankfurt": {
         "label": "Germany · Frankfurt stock exchange",
         "file": "germany_frankfurt.csv",
@@ -380,6 +401,9 @@ Rules:
 - The evidence must be about this exact company (not a
   namesake, not a parent or subsidiary unless clearly the
   same group).
+- Much evidence is published only in the company's
+  local language (e.g. German, Swedish, Croatian,
+  Serbian): search in that language when useful.
 - If the search finds no such evidence, set
   "ai_signal_found" to false. That is a normal, useful
   answer; do not stretch weak evidence.
