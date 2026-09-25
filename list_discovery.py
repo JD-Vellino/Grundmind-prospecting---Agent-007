@@ -53,6 +53,14 @@ MAX_COMPANIES_PER_RUN = 100
 PARALLEL_CHECKS = 4
 
 
+NASDAQ_NORDIC_SOURCE = (
+    "Nasdaq Nordic main-market share list "
+    "(api.nasdaq.com), downloaded 2026-09-25. Home-country "
+    "companies only, share classes merged, Technology "
+    "sector removed (mostly software vendors)."
+)
+
+
 COMPANY_LISTS = {
     "switzerland_six": {
         "label": "Switzerland · Swiss stock exchange (SIX)",
@@ -63,6 +71,21 @@ COMPANY_LISTS = {
             "Swiss primary listings only, investment "
             "companies removed."
         ),
+    },
+    "sweden_stockholm": {
+        "label": "Sweden · Nasdaq Stockholm",
+        "file": "sweden_stockholm.csv",
+        "source": NASDAQ_NORDIC_SOURCE,
+    },
+    "finland_helsinki": {
+        "label": "Finland · Nasdaq Helsinki",
+        "file": "finland_helsinki.csv",
+        "source": NASDAQ_NORDIC_SOURCE,
+    },
+    "denmark_copenhagen": {
+        "label": "Denmark · Nasdaq Copenhagen",
+        "file": "denmark_copenhagen.csv",
+        "source": NASDAQ_NORDIC_SOURCE,
     },
     "germany_frankfurt": {
         "label": "Germany · Frankfurt stock exchange",
@@ -85,6 +108,7 @@ NAME_NOISE = {
     "gmbh", "kgaa", "co", "company", "corp", "corporation",
     "holding", "holdings", "group", "gruppe", "groupe",
     "international", "the",
+    "oyj", "abp", "ab", "publ", "asa",
 }
 
 
@@ -102,6 +126,8 @@ def name_tokens(value: str) -> list[str]:
         ("ä", "ae"),
         ("ö", "oe"),
         ("ü", "ue"),
+        ("æ", "ae"),
+        ("ø", "o"),
     ):
         text = text.replace(umlaut, plain)
 
