@@ -223,7 +223,7 @@ def existing_pool_keys() -> tuple[
                 "company",
                 "",
             )
-        ).strip().lower()
+        ).strip()
 
         if domain:
             domains.add(domain)
@@ -241,6 +241,11 @@ def filter_existing(
     domains, companies = (
         existing_pool_keys()
     )
+
+    companies = {
+        company.lower()
+        for company in companies
+    }
 
     candidates = result.get(
         "candidates",
@@ -363,9 +368,23 @@ def main() -> None:
             ),
         )
 
+        exclude_domains: set[str] = set()
+        exclude_companies: set[str] = set()
+
+        if request.get(
+            "exclude_existing",
+            True,
+        ):
+            (
+                exclude_domains,
+                exclude_companies,
+            ) = existing_pool_keys()
+
         result = discover(
             target_description=target,
             target_count=search_count,
+            exclude_domains=exclude_domains,
+            exclude_companies=exclude_companies,
         )
 
         if not isinstance(

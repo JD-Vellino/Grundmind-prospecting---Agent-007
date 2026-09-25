@@ -137,6 +137,7 @@ def run_discovery_search(
     target_description: str,
     lens: str,
     limit: int,
+    known_companies: list[str] | None = None,
 ) -> dict:
     """
     Broad top-of-funnel search.
@@ -144,6 +145,20 @@ def run_discovery_search(
     Unlike Agent 007 forensic research, this worker is
     deliberately NOT tied to one target company.
     """
+
+    known_block = ""
+
+    if known_companies:
+        # Without this the worker keeps resurfacing the
+        # same well-known names, which are then discarded
+        # as duplicates of the existing pool.
+        known_block = (
+            "\nALREADY KNOWN COMPANIES (do NOT return any "
+            "of these, or their subsidiaries/brands; spend "
+            "the search on companies not in this list):\n\n"
+            + "; ".join(known_companies)
+            + "\n"
+        )
 
     messages = [
         {
@@ -172,7 +187,7 @@ DISCOVERY LENS:
 {lens}
 
 Find up to {limit} distinct companies.
-
+{known_block}
 This is broad prospect discovery, not forensic research.
 
 Useful reasons for surfacing a company include:
@@ -331,7 +346,35 @@ Return exactly:
 def discover(
     target_description: str,
     target_count: int,
+    exclude_domains: set[str] | None = None,
+    exclude_companies: set[str] | None = None,
 ) -> dict:
+    """
+    exclude_domains / exclude_companies: already-known
+    prospects. They are named to the search workers and
+    removed before the target_count cap is applied, so
+    net-new companies are not cut off by known ones.
+    """
+
+    known_companies = sorted(
+        {
+            company.strip()
+            for company in exclude_companies or ()
+            if company.strip()
+        },
+        key=str.lower,
+    )
+
+    exclude_domains = {
+        domain.strip().lower()
+        for domain in exclude_domains or ()
+        if domain.strip()
+    }
+
+    exclude_keys = {
+        normalize_company(company)
+        for company in known_companies
+    } - {""}
 
     target_count = max(
         1,
@@ -362,55 +405,13 @@ def discover(
         )
         print(lens)
 
-        objective = f"""
-Find up to {per_lens} companies matching this prospect target:
-
-TARGET:
-{target_description}
-
-SEARCH LENS:
-{lens}
-
-This is broad sales prospect discovery, not deep account
-research.
-
-Look for real operating companies where public evidence
-suggests they may be relevant to the target.
-
-Useful evidence can include:
-- AI adoption
-- automation
-- digital transformation
-- enterprise software transformation
-- process standardisation
-- AI governance or enablement
-- measurable technology transformation
-- relevant vendor/customer case studies
-- relevant transformation or AI hiring
-
-For every company found, prioritize:
-- exact company name
-- official company website
-- country
-- short reason it surfaced
-- the public source URL that caused it to surface
-
-Do not spend time proving commercial pain.
-Do not create an account brief.
-Do not deeply investigate each company.
-
-Exclude companies that clearly do not match the user's
-target.
-
-Return concise research. Diversity of companies matters.
-"""
-
         result = run_discovery_search(
             target_description=(
                 target_description
             ),
             lens=lens,
             limit=per_lens,
+            known_companies=known_companies,
         )
 
         research_batches.append(
@@ -517,6 +518,13 @@ Return concise research. Diversity of companies matters.
         company_key = normalize_company(
             company
         )
+
+        # Already in the prospect pool.
+        if (
+            (domain and domain in exclude_domains)
+            or company_key in exclude_keys
+        ):
+            continue
 
         if domain:
             if domain in seen_domains:
