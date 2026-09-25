@@ -55,7 +55,7 @@ PARALLEL_CHECKS = 4
 
 COMPANY_LISTS = {
     "switzerland_six": {
-        "label": "Switzerland · SIX-listed companies",
+        "label": "Switzerland · Swiss stock exchange (SIX)",
         "file": "switzerland_six.csv",
         "source": (
             "SIX Swiss Exchange equity issuers list "
