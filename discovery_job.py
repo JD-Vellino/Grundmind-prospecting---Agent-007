@@ -71,6 +71,54 @@ def write_status(
     )
 
 
+# The UI signal labels are ambiguous to the model: e.g.
+# "AI investment" was read as "AI startups raising money",
+# which filled runs with AI vendors and investors that
+# qualification then rejected. Always define the signal
+# from the BUYER side: a company adopting AI in its own
+# operations.
+AI_SIGNAL_DEFINITIONS = {
+    "Any meaningful AI activity": (
+        "the company uses or rolls out AI in its own "
+        "operations"
+    ),
+    "GenAI adoption": (
+        "the company is adopting generative AI tools "
+        "(e.g. copilots, ChatGPT Enterprise, internal "
+        "assistants) for its own employees or processes"
+    ),
+    "Enterprise AI rollout": (
+        "the company is rolling out AI across multiple "
+        "teams, functions or countries in its own "
+        "organisation"
+    ),
+    "AI workflow automation": (
+        "the company is automating its own internal "
+        "workflows with AI"
+    ),
+    "AI investment": (
+        "the company itself is spending money on AI for "
+        "its own operations (AI programmes, budgets, "
+        "platforms, partnerships as a customer). This does "
+        "NOT mean AI startups raising funding, and NOT "
+        "investors or venture funds"
+    ),
+    "AI governance / enablement": (
+        "the company is setting up AI governance, "
+        "policies, training or enablement for its own staff"
+    ),
+    "AI hiring": (
+        "the company is hiring people to adopt or scale AI "
+        "inside its own business (not an AI vendor hiring "
+        "to build its product)"
+    ),
+    "AI transformation": (
+        "the company runs an AI-driven transformation of "
+        "its own business processes"
+    ),
+}
+
+
 def build_target(
     request: dict,
 ) -> str:
@@ -116,9 +164,18 @@ def build_target(
         "",
         f"Geography: {geography}",
         f"Industry: {industry}",
-        f"AI signal focus: {ai_signal}",
+        f"AI signal focus: {ai_signal}"
+        + (
+            f" — meaning: {AI_SIGNAL_DEFINITIONS[ai_signal]}."
+            if ai_signal in AI_SIGNAL_DEFINITIONS
+            else ""
+        ),
         f"Pain/opportunity focus: {pain_focus}",
         f"Likely department: {department}",
+        "",
+        "The target is a BUYER / ADOPTER of AI: an operating "
+        "company using AI in its own business, not a company "
+        "that sells AI.",
         "",
         "The company should show meaningful evidence of AI, "
         "GenAI, automation, digital transformation, AI "
@@ -157,7 +214,10 @@ def build_target(
         True,
     ):
         exclusions.append(
-            "companies whose primary business is selling AI software"
+            "companies whose primary product or service is AI, "
+            "automation, robotics, data/analytics, or cloud "
+            "software or infrastructure (vendors of the "
+            "technology, including AI startups)"
         )
 
     if request.get(
@@ -165,7 +225,8 @@ def build_target(
         True,
     ):
         exclusions.append(
-            "consultancies and IT services firms"
+            "consultancies, IT services firms, cloud "
+            "partners/resellers and recruitment agencies"
         )
 
     if request.get(

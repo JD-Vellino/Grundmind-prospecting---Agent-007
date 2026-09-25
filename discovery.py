@@ -203,9 +203,18 @@ Useful reasons for surfacing a company include:
 - relevant vendor/customer case studies
 - AI-related hiring tied to business adoption
 
-Exclude businesses whose primary business is selling AI
-services or software consultancy when that conflicts with
-the prospect target.
+HARD EXCLUSIONS (never return these, not even as LOW
+confidence):
+
+- every category in the "Exclude:" line of the prospect
+  target above, if present
+- investors, venture funds, accelerators, incubators and
+  "portfolio companies of X" groupings
+- entries that are not a single named operating company
+
+If a source is a vendor case study or customer story,
+return the CUSTOMER company that adopted the technology,
+never the vendor that sells it.
 
 For every candidate, preserve the source that caused the
 company to surface.
