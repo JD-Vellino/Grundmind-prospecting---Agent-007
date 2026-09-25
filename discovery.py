@@ -84,6 +84,8 @@ def moonshot_chat_create(**kwargs):
 
 OUTPUT_PATH = Path("latest_discovery.json")
 
+MAX_PER_LENS = 25
+
 
 DISCOVERY_LENSES = (
     "enterprise AI adoption and generative AI rollouts",
@@ -393,16 +395,24 @@ def discover(
     # Search more broadly than the final requested count
     # because consolidation and deduplication will remove
     # many candidates.
-    per_lens = max(
-        8,
-        math.ceil(
-            target_count
-            / len(DISCOVERY_LENSES)
-        )
-        * 2,
+    # Capped: asking one search worker for ~50 companies
+    # made Kimi hit its output limit and return truncated
+    # JSON (every failed 100-company run had this). One web
+    # search cannot honestly support more than ~25 anyway.
+    per_lens = min(
+        MAX_PER_LENS,
+        max(
+            8,
+            math.ceil(
+                target_count
+                / len(DISCOVERY_LENSES)
+            )
+            * 2,
+        ),
     )
 
     research_batches = []
+    failed_lenses = 0
 
     for index, lens in enumerate(
         DISCOVERY_LENSES,
@@ -414,20 +424,40 @@ def discover(
         )
         print(lens)
 
-        result = run_discovery_search(
-            target_description=(
-                target_description
-            ),
-            lens=lens,
-            limit=per_lens,
-            known_companies=known_companies,
-        )
+        # One broken worker (malformed JSON, timeout) must
+        # not throw away the other lenses' results.
+        try:
+            result = run_discovery_search(
+                target_description=(
+                    target_description
+                ),
+                lens=lens,
+                limit=per_lens,
+                known_companies=known_companies,
+            )
+
+        except Exception as exc:
+            failed_lenses += 1
+
+            print(
+                "WARNING: discovery lens failed, "
+                f"skipping ({exc.__class__.__name__}: "
+                f"{exc})",
+                flush=True,
+            )
+
+            continue
 
         research_batches.append(
             {
                 "lens": lens,
                 "research": result,
             }
+        )
+
+    if failed_lenses == len(DISCOVERY_LENSES):
+        raise RuntimeError(
+            "All discovery searches failed."
         )
 
     # -----------------------------------------------------
