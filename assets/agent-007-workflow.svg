@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="820" viewBox="0 0 1600 820" role="img" aria-labelledby="t d">
+<title id="t">Agent 007 prospecting workflow</title>
+<desc id="d">Public architecture showing prospect discovery, evidence research, qualification, account intelligence and human-reviewed outreach.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#071019"/><stop offset="1" stop-color="#02070b"/></linearGradient>
+  <linearGradient id="hi" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#17374b"/><stop offset="1" stop-color="#0d202f"/></linearGradient>
+  <style>
+    .title{font:700 46px Inter,Arial,sans-serif;fill:#f3f7fb}.sub{font:400 20px Inter,Arial,sans-serif;fill:#91a6b7}
+    .ey{font:700 14px Inter,Arial,sans-serif;fill:#6f91aa;letter-spacing:1.7px}.h{font:700 22px Inter,Arial,sans-serif;fill:#eef6fb}
+    .b{font:400 16px Inter,Arial,sans-serif;fill:#abc0ce}.sm{font:600 13px Inter,Arial,sans-serif;fill:#7794a8}
+    .card{fill:url(#hi);stroke:#294b61;stroke-width:2}.accent{fill:#102c32;stroke:#4ba9a1;stroke-width:2}.line{fill:none;stroke:#47718d;stroke-width:3}
+  </style>
+</defs>
+<rect width="1600" height="820" fill="url(#bg)"/>
+<text x="70" y="72" class="title">Agent 007</text>
+<text x="70" y="108" class="sub">Evidence-based prospecting from discovery to human-reviewed outreach</text>
+
+<g transform="translate(55 205)"><rect width="230" height="260" rx="22" class="card"/><text x="26" y="42" class="ey">01 · DISCOVER</text><text x="26" y="86" class="h">Find companies</text><text x="26" y="127" class="b">Defined company universes</text><text x="26" y="157" class="b">and current AI signals</text><text x="26" y="211" class="sm">BUYER-SIDE ACTIVITY</text></g>
+<path d="M285 335 H335" class="line"/><polygon points="335,335 319,326 319,344" fill="#47718d"/>
+
+<g transform="translate(340 180)"><rect width="260" height="310" rx="22" class="card"/><text x="26" y="42" class="ey">02 · RESEARCH</text><text x="26" y="86" class="h">Collect evidence</text><text x="26" y="126" class="b">AI hiring</text><text x="26" y="155" class="b">Deployment</text><text x="26" y="184" class="b">Value / ROI</text><text x="26" y="213" class="b">Organizational fit</text><text x="26" y="242" class="b">Commercial friction</text><text x="26" y="281" class="sm">MULTIPLE FOCUSED PASSES</text></g>
+<path d="M600 335 H650" class="line"/><polygon points="650,335 634,326 634,344" fill="#47718d"/>
+
+<g transform="translate(655 180)"><rect width="260" height="310" rx="22" class="accent"/><text x="26" y="42" class="ey" style="fill:#84c9c3">03 · VERIFY &amp; QUALIFY</text><text x="26" y="86" class="h">Evidence before score</text><text x="26" y="128" class="b">Source provenance</text><text x="26" y="157" class="b">Corroboration</text><text x="26" y="186" class="b">Verified / unverified</text><text x="26" y="215" class="b">Fit &amp; priority</text><text x="26" y="272" class="sm" style="fill:#9bd4ce">UNKNOWN STAYS UNKNOWN</text></g>
+<path d="M915 335 H965" class="line"/><polygon points="965,335 949,326 949,344" fill="#47718d"/>
+
+<g transform="translate(970 205)"><rect width="230" height="260" rx="22" class="card"/><text x="26" y="42" class="ey">04 · BRIEF</text><text x="26" y="86" class="h">Account intelligence</text><text x="26" y="127" class="b">Why this company?</text><text x="26" y="157" class="b">Why now?</text><text x="26" y="187" class="b">What supports it?</text><text x="26" y="219" class="sm">COMMERCIAL CONTEXT</text></g>
+<path d="M1200 335 H1250" class="line"/><polygon points="1250,335 1234,326 1234,344" fill="#47718d"/>
+
+<g transform="translate(1255 180)"><rect width="290" height="310" rx="22" class="card"/><text x="26" y="42" class="ey">05 · OUTREACH</text><text x="26" y="86" class="h">Prepare the approach</text><text x="26" y="128" class="b">Contact discovery</text><text x="26" y="157" class="b">Evidence-backed draft</text><text x="26" y="186" class="b">Human review &amp; edit</text><rect x="26" y="220" width="238" height="50" rx="14" fill="#102c32" stroke="#4ba9a1"/><text x="145" y="251" text-anchor="middle" class="b" style="fill:#d9f2ef">Human decides whether to send</text></g>
+
+<text x="70" y="590" class="ey">DESIGN CONTRACT</text>
+<g transform="translate(70 625)"><rect width="330" height="105" rx="18" class="card"/><text x="24" y="42" class="h">Evidence</text><text x="24" y="73" class="b">Claims remain connected to sources.</text></g>
+<g transform="translate(425 625)"><rect width="330" height="105" rx="18" class="card"/><text x="24" y="42" class="h">Structure</text><text x="24" y="73" class="b">Research feeds explicit qualification logic.</text></g>
+<g transform="translate(780 625)"><rect width="330" height="105" rx="18" class="card"/><text x="24" y="42" class="h">Uncertainty</text><text x="24" y="73" class="b">Unsupported conclusions stay unresolved.</text></g>
+<g transform="translate(1135 625)"><rect width="330" height="105" rx="18" class="card"/><text x="24" y="42" class="h">Human agency</text><text x="24" y="73" class="b">Automation prepares; a person decides.</text></g>
+<text x="70" y="785" class="sm">Public product architecture · Operational data, credentials and private outreach state remain outside the showcase.</text>
+</svg>
