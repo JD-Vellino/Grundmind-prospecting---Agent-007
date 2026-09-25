@@ -64,6 +64,16 @@ COMPANY_LISTS = {
             "companies removed."
         ),
     },
+    "germany_frankfurt": {
+        "label": "Germany · Frankfurt stock exchange",
+        "file": "germany_frankfurt.csv",
+        "source": (
+            "Deutsche Börse 'Listed companies' report "
+            "(Prime Standard, General Standard, Scale), "
+            "downloaded 2026-09-25. German companies "
+            "only; Software sector removed (vendors)."
+        ),
+    },
 }
 
 
@@ -72,7 +82,7 @@ COMPANY_LISTS = {
 # ("Julius Bär Gruppe AG" vs "Julius Baer").
 NAME_NOISE = {
     "ag", "sa", "ltd", "limited", "inc", "plc", "se", "nv",
-    "gmbh", "co", "company", "corp", "corporation",
+    "gmbh", "kgaa", "co", "company", "corp", "corporation",
     "holding", "holdings", "group", "gruppe", "groupe",
     "international", "the",
 }
