@@ -71,6 +71,9 @@ export default function ProspectPool() {
   const [busy, setBusy] =
     useState(false);
 
+  const [historyOpen, setHistoryOpen] =
+    useState(false);
+
   const [message, setMessage] =
     useState<string | null>(null);
 
@@ -506,7 +509,18 @@ your-site.com`,
     <>
       {runs.length > 0 && (
         <section className="history-panel">
-          <div className="history-header">
+          <button
+            type="button"
+            className={`history-header history-toggle${
+              historyOpen ? " is-open" : ""
+            }`}
+            aria-expanded={historyOpen}
+            onClick={() =>
+              setHistoryOpen(
+                (open) => !open,
+              )
+            }
+          >
             <div>
               <div className="section-kicker">
                 PROSPECT SEARCH HISTORY
@@ -521,9 +535,13 @@ your-site.com`,
               {runs.length === 1
                 ? "run"
                 : "runs"}
+              <span className="history-arrow">
+                {historyOpen ? "▾" : "▸"}
+              </span>
             </span>
-          </div>
+          </button>
 
+          {historyOpen && (
           <div className="history-list">
             {runs.map((run) => {
               const request =
@@ -638,6 +656,7 @@ your-site.com`,
               );
             })}
           </div>
+          )}
         </section>
       )}
 
