@@ -1,0 +1,28 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Secrets
+.env
+.env.*
+
+# Old hand-made backups (pre-git history)
+_archive/
+*.before*
+
+# Runtime data: generated state, logs, prospect/contact data (personal data — never commit)
+*.log
+discovery_status.json
+evidence_store.json
+master_prospect_pool.json
+prospect_runs.json
+latest_*.json
+latest_*.md
+active_result/
+research_runs/
+
+# Editor / local tooling
+.idea/
+.vscode/
+.mcp.json
