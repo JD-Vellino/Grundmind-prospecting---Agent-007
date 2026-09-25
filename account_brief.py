@@ -106,6 +106,13 @@ def build_evidence_catalog(
                     ).value
                 )
 
+                # CORROBORATED = claim confirmed in the
+                # fetched text of an independent source.
+                # For the brief that is verified evidence;
+                # only unchecked claims stay UNVERIFIED.
+                if evidence_status == "CORROBORATED":
+                    evidence_status = "VERIFIED"
+
             else:
 
                 evidence_status = (

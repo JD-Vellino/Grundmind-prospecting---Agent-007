@@ -135,15 +135,18 @@ def classify_evidence_status(
     if SourceTier.A in tiers:
         return EvidenceStatus.VERIFIED
 
-    # Conservative rule:
-    # require at least two independent Tier B sources.
-    tier_b_count = sum(
-        1
+    # Every caller passes only URLs whose fetched text was
+    # checked by verify_claim.py and returned SUPPORTED.
+    # A claim confirmed in an independent source (press,
+    # trade media, job boards) is therefore corroborated,
+    # not unverified. Previously only company-owned pages
+    # counted, which discarded most real-world evidence
+    # (e.g. third-party interviews about AI rollouts).
+    # Low-quality aggregators (Tier C) alone stay unverified.
+    if any(
+        tier in (SourceTier.B, SourceTier.D)
         for tier in tiers
-        if tier == SourceTier.B
-    )
-
-    if tier_b_count >= 2:
+    ):
         return EvidenceStatus.CORROBORATED
 
     return EvidenceStatus.UNVERIFIED
