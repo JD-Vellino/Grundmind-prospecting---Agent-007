@@ -19,6 +19,7 @@ master_prospect_pool.json
 prospect_runs.json
 latest_*.json
 latest_*.md
+company_list_checked.json
 active_result/
 research_runs/
 

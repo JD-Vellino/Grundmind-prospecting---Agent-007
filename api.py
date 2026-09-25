@@ -233,6 +233,12 @@ class DiscoveryRequest(BaseModel):
     exclude_research_media: bool = True
     exclude_existing: bool = True
 
+    # "news": search AI news for companies (discovery.py).
+    # "company_list": check each company of a list
+    # (list_discovery.py); target_count = companies to check.
+    mode: str = "news"
+    company_list: str = ""
+
 
 DISCOVERY_STATUS_PATH = (
     Path(__file__).resolve().parent
@@ -252,6 +258,21 @@ def start_discovery(
     root = Path(
         __file__
     ).resolve().parent
+
+    if request.mode == "company_list":
+        from list_discovery import COMPANY_LISTS
+
+        if request.company_list not in COMPANY_LISTS:
+            raise HTTPException(
+                status_code=400,
+                detail="Unknown company list.",
+            )
+
+    elif request.mode != "news":
+        raise HTTPException(
+            status_code=400,
+            detail="Unknown discovery mode.",
+        )
 
     if DISCOVERY_STATUS_PATH.exists():
 
@@ -345,6 +366,19 @@ def start_discovery(
         log_handle.close()
 
     return initial
+
+
+@app.get("/api/discovery/lists")
+def discovery_lists() -> dict:
+
+    from discovery_job import existing_pool_keys
+    from list_discovery import list_summaries
+
+    _, companies = existing_pool_keys()
+
+    return {
+        "lists": list_summaries(companies),
+    }
 
 
 @app.get("/api/discovery/status")

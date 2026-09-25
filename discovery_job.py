@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from discovery import discover
+from list_discovery import discover_from_list
 from prospect_pool import qualify_discovery
 from prospect_runs import (
     complete_run,
@@ -441,12 +442,43 @@ def main() -> None:
                 exclude_companies,
             ) = existing_pool_keys()
 
-        result = discover(
-            target_description=target,
-            target_count=search_count,
-            exclude_domains=exclude_domains,
-            exclude_companies=exclude_companies,
-        )
+        if request.get("mode") == "company_list":
+            list_id = str(
+                request.get("company_list", "")
+            )
+
+            def on_progress(
+                done: int,
+                total: int,
+                with_signal: int,
+            ) -> None:
+                write_status(
+                    status="running",
+                    progress=10 + int(70 * done / total),
+                    message=(
+                        f"Checked {done}/{total} list "
+                        f"companies, {with_signal} with "
+                        "an AI signal..."
+                    ),
+                )
+
+            # Here target_count means "companies to check",
+            # which keeps cost and run time predictable.
+            result = discover_from_list(
+                list_id=list_id,
+                company_count=target_count,
+                target_description=target,
+                exclude_companies=exclude_companies,
+                on_progress=on_progress,
+            )
+
+        else:
+            result = discover(
+                target_description=target,
+                target_count=search_count,
+                exclude_domains=exclude_domains,
+                exclude_companies=exclude_companies,
+            )
 
         if not isinstance(
             result,

@@ -1346,6 +1346,13 @@ body {
 }
 
 
+.general-list-note {
+  margin: 16px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: .7;
+}
+
 .general-exclusions {
   display: flex;
   align-items: center;

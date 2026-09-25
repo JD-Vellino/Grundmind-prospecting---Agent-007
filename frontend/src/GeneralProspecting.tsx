@@ -21,7 +21,32 @@ type DiscoveryStatus = {
 };
 
 
+type CompanyList = {
+  id: string;
+  label: string;
+  source: string;
+  total: number;
+  in_pool: number;
+  checked: number;
+  remaining: number;
+};
+
+
 export default function GeneralProspecting() {
+  // "news": search AI news for companies.
+  // "company_list": check each company of a
+  // known list, one focused search each.
+  const [mode, setMode] =
+    useState<"news" | "company_list">(
+      "news",
+    );
+
+  const [companyLists, setCompanyLists] =
+    useState<CompanyList[]>([]);
+
+  const [companyList, setCompanyList] =
+    useState("");
+
   const [targetCount, setTargetCount] =
     useState("100");
 
@@ -89,6 +114,8 @@ export default function GeneralProspecting() {
               "application/json",
           },
           body: JSON.stringify({
+            mode,
+            company_list: companyList,
             target_count:
               Number(targetCount),
             geography,
@@ -136,6 +163,50 @@ export default function GeneralProspecting() {
           : "Unable to start discovery.",
       );
     }
+  };
+
+
+  // Reload after each run: the number of
+  // companies left to check changes.
+  useEffect(() => {
+    fetch("/api/discovery/lists")
+      .then((response) =>
+        response.ok
+          ? response.json()
+          : { lists: [] },
+      )
+      .then((body) => {
+        const lists =
+          (body.lists ?? []) as CompanyList[];
+
+        setCompanyLists(lists);
+
+        setCompanyList(
+          (current) =>
+            current || (lists[0]?.id ?? ""),
+        );
+      })
+      .catch(() => {
+        // The news mode still works without lists.
+      });
+  }, [poolVersion]);
+
+
+  const selectedList =
+    companyLists.find(
+      (item) => item.id === companyList,
+    );
+
+
+  const changeMode = (
+    next: "news" | "company_list",
+  ) => {
+    setMode(next);
+
+    // One paid search per company: start small.
+    setTargetCount(
+      next === "company_list" ? "25" : "100",
+    );
   };
 
 
@@ -229,8 +300,65 @@ export default function GeneralProspecting() {
 
         <div className="general-search-grid">
           <label>
+            <span>SOURCE</span>
+
+            <select
+              value={mode}
+              disabled={running}
+              onChange={(event) =>
+                changeMode(
+                  event.target.value as
+                    | "news"
+                    | "company_list",
+                )
+              }
+            >
+              <option value="news">
+                Search AI news
+              </option>
+              <option
+                value="company_list"
+                disabled={
+                  companyLists.length === 0
+                }
+              >
+                Check a company list
+              </option>
+            </select>
+          </label>
+
+
+          {mode === "company_list" && (
+            <label>
+              <span>COMPANY LIST</span>
+
+              <select
+                value={companyList}
+                disabled={running}
+                onChange={(event) =>
+                  setCompanyList(
+                    event.target.value,
+                  )
+                }
+              >
+                {companyLists.map((item) => (
+                  <option
+                    key={item.id}
+                    value={item.id}
+                  >
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+
+          <label>
             <span>
-              NUMBER OF COMPANIES
+              {mode === "company_list"
+                ? "COMPANIES TO CHECK"
+                : "NUMBER OF COMPANIES"}
             </span>
 
             <select
@@ -242,6 +370,11 @@ export default function GeneralProspecting() {
                 )
               }
             >
+              {mode === "company_list" && (
+                <option value="10">
+                  10
+                </option>
+              )}
               <option value="25">
                 25
               </option>
@@ -251,13 +384,17 @@ export default function GeneralProspecting() {
               <option value="100">
                 100
               </option>
-              <option value="150">
-                150
-              </option>
+              {mode === "news" && (
+                <option value="150">
+                  150
+                </option>
+              )}
             </select>
           </label>
 
 
+          {mode === "news" && (
+          <>
           <label>
             <span>GEOGRAPHY</span>
 
@@ -330,6 +467,8 @@ export default function GeneralProspecting() {
               <option>Technology</option>
             </select>
           </label>
+          </>
+          )}
 
 
           <label>
@@ -448,6 +587,23 @@ export default function GeneralProspecting() {
             </select>
           </label>
         </div>
+
+
+        {mode === "company_list" &&
+          selectedList && (
+            <p className="general-list-note">
+              {selectedList.remaining} of{" "}
+              {selectedList.total} companies
+              left to check (
+              {selectedList.in_pool} already in
+              the pool, {selectedList.checked}{" "}
+              checked in the last 6 months).
+              One web search per company; only
+              companies with a public AI signal
+              are kept. Source:{" "}
+              {selectedList.source}
+            </p>
+          )}
 
 
         <div className="general-exclusions">
