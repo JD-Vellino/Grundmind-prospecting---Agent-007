@@ -29,7 +29,29 @@ type EvidenceItem = {
   claim?: string;
   supported_sources?: string[];
   evidence_status?: string | null;
+  source_type?: string | null;
 };
+
+const SOURCE_TYPE_LABELS: Record<string, string> = {
+  COMPANY: "Company source",
+  PRESS: "Press / third party",
+  JOB_POSTING: "Job posting",
+  ACADEMIC: "Academic study",
+  VENDOR_CONTENT: "Vendor case study",
+};
+
+function sourceTypeLabel(
+  sourceType?: string | null,
+): string {
+  if (!sourceType) {
+    return "";
+  }
+
+  return (
+    SOURCE_TYPE_LABELS[sourceType] ??
+    sourceType
+  );
+}
 
 type Dashboard = {
   company: string;
@@ -1244,6 +1266,11 @@ function App() {
                         {sourceDomain(
                           evidence.supported_sources?.[0],
                         )}
+                        {evidence.source_type
+                          ? ` · ${sourceTypeLabel(
+                              evidence.source_type,
+                            )}`
+                          : ""}
                       </span>
                     </div>
 
@@ -1265,6 +1292,17 @@ function App() {
                           "UNKNOWN"}
                       </strong>
                     </div>
+
+                    {evidence.source_type && (
+                      <div className="evidence-detail-field">
+                        <span>SOURCE TYPE</span>
+                        <strong>
+                          {sourceTypeLabel(
+                            evidence.source_type,
+                          )}
+                        </strong>
+                      </div>
+                    )}
 
                     <div className="evidence-detail-field evidence-sources">
                       <span>SOURCES</span>

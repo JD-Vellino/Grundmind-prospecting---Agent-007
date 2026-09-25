@@ -7,7 +7,9 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from evidence_quality import (
+    INDIRECT_SOURCE_TYPES,
     classify_evidence_status,
+    strongest_source_type,
 )
 from company_config import get_company_config
 
@@ -113,11 +115,31 @@ def build_evidence_catalog(
                 if evidence_status == "CORROBORATED":
                     evidence_status = "VERIFIED"
 
+                source_type = strongest_source_type(
+                    urls=supported_sources,
+                    official_domains=(
+                        OFFICIAL_DOMAINS
+                    ),
+                    official_source_prefixes=(
+                        OFFICIAL_SOURCE_PREFIXES
+                    ),
+                )
+
+                # Academic theses / vendor case studies:
+                # confirmed in the fetched text, so usable,
+                # but the brief must attribute them (see
+                # SOURCE ATTRIBUTION POLICY). Scoring keeps
+                # them weaker.
+                if source_type in INDIRECT_SOURCE_TYPES:
+                    evidence_status = "VERIFIED"
+
             else:
 
                 evidence_status = (
                     "UNVERIFIED"
                 )
+
+                source_type = None
 
             catalog[evidence_id] = {
                 "signal": signal.get(
@@ -131,6 +153,7 @@ def build_evidence_catalog(
                 "evidence_status": (
                     evidence_status
                 ),
+                "source_type": source_type,
                 "supported_sources": (
                     supported_sources
                 ),
@@ -328,6 +351,24 @@ That item-level status takes precedence over the aggregate signal status.
 
 A VERIFIED signal does NOT mean every finding inside that signal is
 VERIFIED.
+
+
+SOURCE ATTRIBUTION POLICY:
+
+Every evidence item has a source_type.
+
+- COMPANY, PRESS, JOB_POSTING: may be stated directly.
+- ACADEMIC: an academic study or student thesis about the company.
+  Whenever you use it, attribute it in the same sentence, e.g.
+  "an academic study based on interviews at the company reports ...".
+  Never present it as a current company fact or as the company's own
+  statement. Treat it as possibly dated.
+- VENDOR_CONTENT: a vendor or partner case study / customer story.
+  Whenever you use it, attribute it in the same sentence, e.g.
+  "a vendor case study reports ...". Never present it as independent
+  confirmation.
+
+Do not call ACADEMIC or VENDOR_CONTENT evidence "verified" in the prose.
 
 STRATEGIC EVIDENCE POLICY:
 
@@ -622,7 +663,10 @@ add that valid evidence ID to the corrected statement.
 
 3. VERIFIED VS UNVERIFIED
 
-VERIFIED evidence may be stated directly.
+VERIFIED evidence may be stated directly, except ACADEMIC and
+VENDOR_CONTENT source_type evidence, which must keep its explicit
+attribution ("an academic study reports ...", "a vendor case study
+reports ...") in every sentence that uses it.
 
 For strategic sections:
 
@@ -3448,6 +3492,12 @@ def render_markdown(
                 "",
             )
         )
+
+        if evidence.get("source_type"):
+            lines.append(
+                "Source type: "
+                + evidence["source_type"]
+            )
 
         for source in evidence.get(
             "supported_sources",

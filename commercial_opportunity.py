@@ -7,6 +7,7 @@ from openai import OpenAI
 
 from evidence_quality import (
     classify_evidence_status,
+    strongest_source_type,
 )
 from evidence_store import (
     get_verified_findings,
@@ -183,6 +184,19 @@ def item_evidence_status(
     return str(status)
 
 
+def item_source_type(
+    urls: list[str],
+) -> str | None:
+
+    return strongest_source_type(
+        urls=urls,
+        official_domains=OFFICIAL_DOMAINS,
+        official_source_prefixes=(
+            OFFICIAL_SOURCE_PREFIXES
+        ),
+    )
+
+
 def build_evidence_catalog(
     result: dict,
 ) -> dict:
@@ -222,6 +236,11 @@ def build_evidence_catalog(
                 "supported_sources": urls,
                 "evidence_status": (
                     item_evidence_status(
+                        urls
+                    )
+                ),
+                "source_type": (
+                    item_source_type(
                         urls
                     )
                 ),
@@ -284,6 +303,11 @@ def build_evidence_catalog(
             ),
             "evidence_status": (
                 item_evidence_status(
+                    supported_sources
+                )
+            ),
+            "source_type": (
+                item_source_type(
                     supported_sources
                 )
             ),
