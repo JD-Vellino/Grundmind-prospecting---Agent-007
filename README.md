@@ -56,6 +56,14 @@ using AI in its own operations?"*
 The list run also finished in under two minutes and surfaced small and
 mid-caps that news search never reached.
 
+## Layout
+
+```
+backend/     Python API, discovery, research and scoring (FastAPI)
+  company_lists/   public company lists for list-based discovery
+frontend/    React UI (built into frontend/dist, served by the API)
+```
+
 ## Stack
 
 - **Backend:** Python, FastAPI, background jobs as subprocesses, JSON files as
@@ -69,10 +77,10 @@ mid-caps that news search never reached.
 ```bash
 python -m venv .venv
 .venv/bin/pip install -r requirements.txt
-cp .env.example .env          # fill in your keys
+cp backend/.env.example backend/.env   # fill in your keys
 
 cd frontend && npm install && npm run build && cd ..
-.venv/bin/uvicorn api:app --host 127.0.0.1 --port 8707
+cd backend && ../.venv/bin/uvicorn api:app --host 127.0.0.1 --port 8707
 ```
 
 Then open http://127.0.0.1:8707.
@@ -84,7 +92,7 @@ The API has no authentication and can send real email: keep it bound to
 
 Runtime data (the prospect pool, contacts, research runs, logs) is
 git-ignored and never committed: it contains personal contact details.
-The company lists in `company_lists/` are public stock-exchange data.
+The company lists in `backend/company_lists/` are public stock-exchange data.
 
 Cold email is regulated differently across Europe (e.g. stricter consent rules
 in Germany); check local rules before sending.

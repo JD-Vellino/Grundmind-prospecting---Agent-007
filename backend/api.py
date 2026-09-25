@@ -19,7 +19,8 @@ from research_history import (
 
 
 BASE_DIR = Path(__file__).resolve().parent
-FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
+# The frontend lives next to backend/, at the repo root.
+FRONTEND_DIST = BASE_DIR.parent / "frontend" / "dist"
 
 
 app = FastAPI(
