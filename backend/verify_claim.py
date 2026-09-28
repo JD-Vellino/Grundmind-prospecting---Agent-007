@@ -4,17 +4,15 @@ import re
 import sys
 
 from dotenv import load_dotenv
-from openai import OpenAI
+from llm import moonshot_client
 
 from fetch_source import fetch_source_text
 
 
 load_dotenv()
 
-client = OpenAI(
-    api_key=os.environ["MOONSHOT_API_KEY"],
-    base_url="https://api.moonshot.ai/v1",
-)
+# Logged: see llm.py / llm_usage.jsonl.
+client = moonshot_client()
 
 
 # =========================================================

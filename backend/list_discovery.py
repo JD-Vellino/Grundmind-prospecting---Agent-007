@@ -30,6 +30,10 @@ from discovery import (
     hostname,
     moonshot_chat_create,
 )
+from llm import (
+    backend_for,
+    local_chat_json,
+)
 from research_core import (
     WEB_SEARCH_TOOL,
     clean_json,
@@ -47,6 +51,8 @@ CHECKED_PATH = ROOT / "company_list_checked.json"
 
 # A company with no AI signal today may have one later.
 RECHECK_AFTER_DAYS = 180
+
+LOCAL_NO_SIGNAL_RECHECK_DAYS = 90
 
 MAX_COMPANIES_PER_RUN = 100
 
@@ -272,9 +278,20 @@ def recently_checked(
     except Exception:
         return False
 
+    days = RECHECK_AFTER_DAYS
+
+    # The local check has no second "confirm no signal" search
+    # (it missed a bank in the 2026-09-28 test), so its misses
+    # come back sooner.
+    if (
+        entry.get("backend") == "local"
+        and not entry.get("ai_signal_found")
+    ):
+        days = LOCAL_NO_SIGNAL_RECHECK_DAYS
+
     return (
         datetime.now(timezone.utc) - checked_at
-        < timedelta(days=RECHECK_AFTER_DAYS)
+        < timedelta(days=days)
     )
 
 
@@ -526,6 +543,219 @@ Return exactly:
     return None
 
 
+# "Artificial intelligence" in the list countries' languages:
+# much of the evidence is only published locally.
+LOCAL_AI_TERMS = {
+    "Switzerland": "künstliche Intelligenz",
+    "Germany": "künstliche Intelligenz",
+    "Sweden": "artificiell intelligens",
+    "Finland": "tekoäly",
+    "Denmark": "kunstig intelligens",
+    "Croatia": "umjetna inteligencija",
+    "Serbia": "veštačka inteligencija",
+}
+
+LOCAL_PAGES_TO_READ = 3
+LOCAL_PAGE_CHARS = 3000
+
+
+def local_sources(
+    company: str,
+    country: str,
+) -> list[dict]:
+    """SearXNG results for the company, top pages fetched."""
+
+    from fetch_source import fetch_source_text
+    from web_search import search
+
+    # "Example a.d. (Beograd)" -> name + city terms.
+    name = company.replace("(", " ").replace(")", " ")
+
+    # Two searches per company: each one uses a search credit.
+    queries = [
+        f"{name} artificial intelligence",
+        f"{name} "
+        + LOCAL_AI_TERMS.get(country, "AI digital transformation"),
+    ]
+
+    per_query = [
+        [
+            item
+            for item in search(query)
+            if not any(
+                hostname(item["url"]) == blocked
+                or hostname(item["url"]).endswith("." + blocked)
+                for blocked in BLOCKED_DOMAINS
+            )
+        ]
+        for query in queries
+    ]
+
+    # Take the queries' results in turn: appending them let the
+    # English search fill 8 of the 10 slots, so local-language
+    # press (sometimes a company's only AI mention) was cut.
+    sources: list[dict] = []
+    seen: set[str] = set()
+
+    for rank in range(max(map(len, per_query), default=0)):
+        for results in per_query:
+            if rank < len(results) and results[rank]["url"] not in seen:
+                seen.add(results[rank]["url"])
+                sources.append(results[rank])
+
+    sources = sources[:10]
+
+    for item in sources[:LOCAL_PAGES_TO_READ]:
+        # Tavily already returns the page text.
+        if item.get("page"):
+            continue
+
+        try:
+            item["page"] = fetch_source_text(item["url"])[
+                :LOCAL_PAGE_CHARS
+            ]
+        except Exception:
+            item["page"] = ""
+
+    # Only the top pages go to the model in full; the rest as
+    # snippets, to keep the prompt within the model's context.
+    for item in sources[LOCAL_PAGES_TO_READ:]:
+        item.pop("page", None)
+
+    return sources
+
+
+def check_company_local(
+    company: str,
+    country: str,
+    target_description: str,
+) -> dict | None:
+    """
+    Same question as check_company, answered by the local model
+    from SearXNG results. The model may only cite a URL it was
+    given; anything else counts as no signal.
+    """
+
+    sources = local_sources(company, country)
+
+    print(
+        f"Local search for {company}: "
+        f"{len(sources)} sources",
+        flush=True,
+    )
+
+    if not sources:
+        # Almost always the search engines behind SearXNG
+        # blocking us (CAPTCHA / rate limit), not a real
+        # "nothing found". Fail, so the company is retried on
+        # the next run instead of being hidden for months.
+        raise RuntimeError(
+            "SearXNG returned no results (engines blocked or "
+            "rate-limited?)."
+        )
+
+    source_block = "\n\n".join(
+        f"[{index}] {item['title']}\n"
+        f"URL: {item['url']}\n"
+        f"Snippet: {item['content']}"
+        + (
+            f"\nPage excerpt: {item['page']}"
+            if item.get("page")
+            else ""
+        )
+        for index, item in enumerate(sources, start=1)
+    )
+
+    content = local_chat_json(
+        [
+            {
+                "role": "system",
+                "content": (
+                    "You check ONE named company for public "
+                    "evidence that it adopts AI in its own "
+                    "operations, using ONLY the search results "
+                    "provided. Do not use outside knowledge. "
+                    "Do not invent websites, signals or URLs. "
+                    "Return only valid JSON."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"""
+COMPANY: {company}
+COUNTRY: {country}
+
+Does THIS company use, roll out or invest in AI, generative
+AI or AI-driven automation in its OWN business (employees,
+processes, operations, customer service)? Selling AI to
+others does not count as adoption.
+
+Prospect context (what counts as a useful signal and what
+is excluded):
+
+{target_description}
+
+Rules:
+
+- Use only the search results below. They may be in any
+  language.
+- The evidence must be about this exact company (not a
+  namesake, not a different company in the results).
+- If the results show no such evidence, set
+  "ai_signal_found" to false. That is a normal, useful
+  answer; do not stretch weak evidence.
+- "source_url" must be copied exactly from one result below.
+- "signal_date": when the cited evidence happened or was
+  published, as YYYY-MM or YYYY, taken from the source. Empty
+  if the source does not show it. Today is
+  {datetime.now(timezone.utc):%Y-%m-%d}.
+- "signal_stage": LIVE if the AI is in use, PILOT if it is
+  being tested, PLAN if the company only says it plans or
+  considers it.
+
+SEARCH RESULTS:
+
+{source_block}
+
+Return exactly:
+
+{{
+  "company": "{company}",
+  "website": "",
+  "country": "{country}",
+  "primary_business": "",
+  "ai_signal_found": true,
+  "signal": "",
+  "why_interesting": "",
+  "source_url": "",
+  "signal_date": "",
+  "signal_stage": "LIVE|PILOT|PLAN",
+  "confidence": "HIGH|MEDIUM|LOW"
+}}
+""",
+            },
+        ],
+        max_tokens=1500,
+    )
+
+    answer = clean_json(content)
+
+    # Guard against invented evidence: the cited page must be
+    # one the model was actually shown.
+    if signal_found(answer) and str(
+        answer.get("source_url", "")
+    ).strip() not in {item["url"] for item in sources}:
+        print(
+            f"WARNING: {company}: local model cited a URL "
+            "that was not in its search results; treated "
+            "as no signal.",
+            flush=True,
+        )
+        answer["ai_signal_found"] = False
+
+    return answer
+
+
 def signal_found(answer: dict) -> bool:
 
     value = answer.get("ai_signal_found")
@@ -533,6 +763,32 @@ def signal_found(answer: dict) -> bool:
     return (
         value is True
         or str(value).strip().lower() == "true"
+    )
+
+
+# Evidence older than this is not "current" AI activity.
+SIGNAL_MAX_AGE_MONTHS = 12
+
+
+def signal_is_old(signal_date: str) -> bool:
+    """
+    True when YYYY-MM / YYYY is more than SIGNAL_MAX_AGE_MONTHS
+    ago. A bare year counts as December (benefit of the doubt);
+    an empty or unreadable date is not "old", just unknown.
+    """
+
+    match = re.match(r"^\s*(\d{4})(?:-(\d{1,2}))?", signal_date)
+
+    if not match:
+        return False
+
+    months = int(match.group(1)) * 12 + int(match.group(2) or 12)
+
+    now = datetime.now(timezone.utc)
+
+    return (
+        now.year * 12 + now.month - months
+        > SIGNAL_MAX_AGE_MONTHS
     )
 
 
@@ -566,6 +822,23 @@ def to_candidate(
         # Lets qualification spot vendors/consultancies.
         why = f"{why} (Business: {business})".strip()
 
+    signal_date = str(answer.get("signal_date", "")).strip()
+    signal_stage = str(
+        answer.get("signal_stage", "")
+    ).strip().upper()
+
+    if signal_stage not in {"LIVE", "PILOT", "PLAN"}:
+        signal_stage = ""
+
+    confidence = str(
+        answer.get("confidence", "LOW")
+    ).strip().upper()
+
+    # The model rated a two-year-old one-line "plans to invest
+    # in AI" HIGH; a plan or old evidence is never strong.
+    if signal_stage == "PLAN" or signal_is_old(signal_date):
+        confidence = "LOW"
+
     return {
         # Keep the official list name: it is how the
         # company is tracked in the checked-list state.
@@ -581,9 +854,9 @@ def to_candidate(
         "source_url": str(
             answer.get("source_url", "")
         ).strip(),
-        "confidence": str(
-            answer.get("confidence", "LOW")
-        ).strip().upper(),
+        "signal_date": signal_date,
+        "signal_stage": signal_stage,
+        "confidence": confidence,
     }
 
 
@@ -621,10 +894,14 @@ def discover_from_list(
     failed = 0
     done = 0
 
+    local = backend_for("check") == "local"
+
     def check(row: dict) -> tuple[dict, dict | None]:
 
         def once() -> dict | None:
-            return check_company(
+            return (
+                check_company_local if local else check_company
+            )(
                 company=row["company"].strip(),
                 country=str(
                     row.get("country", "")
@@ -638,7 +915,12 @@ def discover_from_list(
         # second search finds (seen on Adval Tech). A miss
         # hides the company for RECHECK_AFTER_DAYS, so
         # confirm "no signal" once before accepting it.
-        if answer is not None and not signal_found(answer):
+        # Not locally: SearXNG returns the same pages again.
+        if (
+            not local
+            and answer is not None
+            and not signal_found(answer)
+        ):
             second = once()
 
             if second is not None:
@@ -659,8 +941,10 @@ def discover_from_list(
             )
             return row, None
 
+    # Locally the GPU runs one model call at a time; two
+    # workers let one search/fetch while the other waits.
     with ThreadPoolExecutor(
-        max_workers=PARALLEL_CHECKS
+        max_workers=2 if local else PARALLEL_CHECKS
     ) as pool:
 
         for row, answer in pool.map(safe_check, batch):
@@ -680,6 +964,7 @@ def discover_from_list(
 
                 outcomes[company] = {
                     "checked_at": now_iso(),
+                    "backend": "local" if local else "kimi",
                     "ai_signal_found": bool(candidate),
                     "source_url": str(
                         answer.get("source_url", "")

@@ -9,17 +9,19 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
-from openai import OpenAI
+from llm import (
+    backend_for,
+    local_chat_json,
+    moonshot_client,
+)
 
 from research_core import clean_json
 
 
 load_dotenv()
 
-client = OpenAI(
-    api_key=os.environ["MOONSHOT_API_KEY"],
-    base_url="https://api.moonshot.ai/v1",
-)
+# Logged: see llm.py / llm_usage.jsonl.
+client = moonshot_client()
 
 
 def moonshot_chat_create(**kwargs):
@@ -80,7 +82,12 @@ def moonshot_chat_create(**kwargs):
 DISCOVERY_PATH = Path("latest_discovery.json")
 POOL_PATH = Path("master_prospect_pool.json")
 
-BATCH_SIZE = 20
+# The local model was validated on batches of 10.
+BATCH_SIZE = (
+    10
+    if backend_for("qualify") == "local"
+    else 20
+)
 
 
 def now_iso() -> str:
@@ -139,9 +146,7 @@ def classify_batch(
     candidates: list[dict],
 ) -> list[dict]:
 
-    response = moonshot_chat_create(
-        model="kimi-k2.6",
-        messages=[
+    messages = [
             {
                 "role": "system",
                 "content": (
@@ -279,24 +284,39 @@ validation, procurement or security overhead.
 Do not reject solely because SALES FRICTION is HIGH.
 """,
             },
-        ],
-        response_format={
-            "type": "json_object"
-        },
-        max_tokens=7000,
-        timeout=120,
-        extra_body={
-            "thinking": {
-                "type": "disabled"
-            }
-        },
-    )
+    ]
 
-    data = clean_json(
-        response.choices[0]
-        .message.content
-        or ""
-    )
+    if backend_for("qualify") == "local":
+        # Tested 2026-09-28 on 60 pool companies: the local
+        # 27B model matched Kimi's keep/reject on 54.
+        content = local_chat_json(
+            messages,
+            max_tokens=7000,
+        )
+
+    else:
+        response = moonshot_chat_create(
+            model="kimi-k2.6",
+            messages=messages,
+            response_format={
+                "type": "json_object"
+            },
+            max_tokens=7000,
+            timeout=120,
+            extra_body={
+                "thinking": {
+                    "type": "disabled"
+                }
+            },
+        )
+
+        content = (
+            response.choices[0]
+            .message.content
+            or ""
+        )
+
+    data = clean_json(content)
 
     result = data.get(
         "candidates",
@@ -313,6 +333,15 @@ Do not reject solely because SALES FRICTION is HIGH.
     ]
 
 
+REJECTED_TYPES = {
+    "AI_VENDOR",
+    "CONSULTANCY",
+    "IT_SERVICES",
+    "RESEARCH_MEDIA",
+    "STALE_ENTITY",
+}
+
+
 def calculate_priority(
     qualification: dict,
 ) -> str:
@@ -321,6 +350,12 @@ def calculate_priority(
         qualification.get("decision")
         == "REJECT"
     ):
+        return "REJECT"
+
+    # Safety net: models sometimes label a company a vendor or
+    # consultancy and still answer KEEP (seen in local-model
+    # tests). The type decides.
+    if qualification.get("prospect_type") in REJECTED_TYPES:
         return "REJECT"
 
     ai_points = {
@@ -505,6 +540,16 @@ def qualify_discovery(
             ),
             "source_url": candidate.get(
                 "source_url",
+                "",
+            ),
+            # List mode only: when the evidence is from and
+            # whether the AI is LIVE, a PILOT or only a PLAN.
+            "signal_date": candidate.get(
+                "signal_date",
+                "",
+            ),
+            "signal_stage": candidate.get(
+                "signal_stage",
                 "",
             ),
             "discovery_confidence": (

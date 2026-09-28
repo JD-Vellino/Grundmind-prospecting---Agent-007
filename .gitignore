@@ -21,6 +21,7 @@ prospect_runs.json
 latest_*.json
 latest_*.md
 company_list_checked.json
+llm_usage.jsonl
 active_result/
 research_runs/
 

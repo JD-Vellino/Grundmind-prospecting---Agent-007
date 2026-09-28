@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from openai import OpenAI
+from llm import moonshot_client
 
 from evidence_quality import (
     classify_evidence_status,
@@ -18,10 +18,8 @@ from company_config import get_company_config
 
 load_dotenv()
 
-client = OpenAI(
-    api_key=os.environ["MOONSHOT_API_KEY"],
-    base_url="https://api.moonshot.ai/v1",
-)
+# Logged: see llm.py / llm_usage.jsonl.
+client = moonshot_client()
 
 
 # =========================================================

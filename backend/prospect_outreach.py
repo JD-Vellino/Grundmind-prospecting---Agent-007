@@ -2,11 +2,17 @@ from __future__ import annotations
 
 import json
 import os
+import re
 
+from datetime import datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
-from openai import OpenAI
+from llm import (
+    backend_for,
+    local_chat_json,
+    moonshot_client,
+)
 
 from research_core import clean_json
 
@@ -18,12 +24,32 @@ load_dotenv(
     ROOT / ".env"
 )
 
-client = OpenAI(
-    api_key=os.environ["MOONSHOT_API_KEY"],
-    base_url="https://api.moonshot.ai/v1",
-)
+# OUTREACH_BACKEND=local in .env drafts on the local model.
+# Logged: see llm.py / llm_usage.jsonl.
+LOCAL = backend_for("outreach") == "local"
+
+client = None if LOCAL else moonshot_client()
 
 BATCH_SIZE = 10
+
+# Legal forms dropped from the name used in emails.
+LEGAL_FORMS = re.compile(
+    r"(?:[\s,]+(?:a\.?d\.?o?\.?|d\.?d\.?|d\.?o\.?o\.?|ag|se|sa|s\.a\.|"
+    r"plc|n\.?v\.?|asa|ab|abp|oyj|a/s|gmbh|ltd\.?|inc\.?))+\s*$",
+    re.IGNORECASE,
+)
+
+
+def display_name(company: str) -> str:
+    """
+    "Example a.d. (Beograd)" -> "Example". List names
+    carry the legal form and the town; an email should not.
+    """
+
+    name = re.sub(r"\s*\([^)]*\)\s*$", "", company).strip()
+    short = LEGAL_FORMS.sub("", name).strip()
+
+    return short or name
 
 
 def load_pool() -> dict:
@@ -79,9 +105,8 @@ def generate_batch(
 
         compact.append(
             {
-                "company": prospect.get(
-                    "company",
-                    "",
+                "company": display_name(
+                    str(prospect.get("company", ""))
                 ),
                 "domain": prospect.get(
                     "domain",
@@ -117,6 +142,14 @@ def generate_batch(
                     "signal",
                     "",
                 ),
+                "signal_date": prospect.get(
+                    "signal_date",
+                    "",
+                ),
+                "signal_stage": prospect.get(
+                    "signal_stage",
+                    "",
+                ),
                 "why_interesting": (
                     prospect.get(
                         "why_interesting",
@@ -130,9 +163,7 @@ def generate_batch(
             }
         )
 
-    response = client.chat.completions.create(
-        model="kimi-k2.6",
-        messages=[
+    messages = [
             {
                 "role": "system",
                 "content": (
@@ -180,9 +211,18 @@ Requirements:
 
 - replace placeholders such as {{{{company}}}},
   {{{{first_name}}}} and {{{{role}}}}
+- write company names in normal capitalisation, not all
+  caps (ADIDAS -> Adidas)
 - preserve the basic purpose and tone of the base email
 - make the opening relevant to that company
 - use company AI evidence when enabled
+- today is {datetime.now(timezone.utc):%Y-%m-%d}. Only present
+  a signal as current ("you are rolling out...") when
+  signal_stage is LIVE or PILOT and signal_date is within the
+  last 12 months. If signal_stage is PLAN, or signal_date is
+  older or empty, either mention it with its year ("in 2024,
+  you announced plans to invest in AI") or leave it out.
+  Never turn a plan into an achievement.
 - use pain/opportunity context when enabled
 - adapt wording to the recipient role when enabled
 - avoid fake familiarity
@@ -204,24 +244,37 @@ Return exactly:
 }}
 """,
             },
-        ],
-        response_format={
-            "type": "json_object"
-        },
-        max_tokens=7000,
-        timeout=120,
-        extra_body={
-            "thinking": {
-                "type": "disabled"
-            }
-        },
-    )
+    ]
 
-    result = clean_json(
-        response.choices[0]
-        .message.content
-        or ""
-    )
+    if LOCAL:
+        content = local_chat_json(
+            messages,
+            max_tokens=7000,
+        )
+
+    else:
+        response = client.chat.completions.create(
+            model="kimi-k2.6",
+            messages=messages,
+            response_format={
+                "type": "json_object"
+            },
+            max_tokens=7000,
+            timeout=120,
+            extra_body={
+                "thinking": {
+                    "type": "disabled"
+                }
+            },
+        )
+
+        content = (
+            response.choices[0]
+            .message.content
+            or ""
+        )
+
+    result = clean_json(content)
 
     drafts = result.get(
         "drafts",
